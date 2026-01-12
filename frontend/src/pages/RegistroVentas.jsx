@@ -13,7 +13,8 @@ function RegistroVentas() {
     fecha: new Date().toISOString().split('T')[0],
     sucursal_id: '',
     turno_id: '',
-    correlativo_ventas: '',
+    correlativo_inicial: '',
+    correlativo_final: '',
     cuenta_id: '',
     monto_depositado: '0',
     venta_tarjeta: '0',
@@ -170,13 +171,28 @@ function RegistroVentas() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Correlativo de Ventas
+                Correlativo Inicial
               </label>
               <input
                 type="text"
-                name="correlativo_ventas"
-                value={formData.correlativo_ventas}
+                name="correlativo_inicial"
+                value={formData.correlativo_inicial}
                 onChange={handleChange}
+                placeholder="Ej: 001"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Correlativo Final
+              </label>
+              <input
+                type="text"
+                name="correlativo_final"
+                value={formData.correlativo_final}
+                onChange={handleChange}
+                placeholder="Ej: 100"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>

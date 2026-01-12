@@ -195,6 +195,7 @@ function ListadoRegistros() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sucursal</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Turno</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Correlativo</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Depositado</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tarjeta</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Ventas</th>
@@ -208,11 +209,22 @@ function ListadoRegistros() {
                   const faltante = parseFloat(registro.total_ventas || 0) - parseFloat(registro.total_sistema || 0);
                   const tieneFaltante = faltante < 0;
                   
+                  // Format correlativo display
+                  let correlativoDisplay = '';
+                  if (registro.correlativo_inicial && registro.correlativo_final) {
+                    correlativoDisplay = `${registro.correlativo_inicial} - ${registro.correlativo_final}`;
+                  } else if (registro.correlativo_inicial) {
+                    correlativoDisplay = registro.correlativo_inicial;
+                  } else if (registro.correlativo_final) {
+                    correlativoDisplay = registro.correlativo_final;
+                  }
+                  
                   return (
                     <tr key={registro.id} className={tieneFaltante ? 'bg-red-50' : ''}>
                       <td className="px-4 py-3 whitespace-nowrap text-sm">{formatDate(registro.fecha)}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm">{registro.sucursal?.nombre}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm">{registro.turno?.nombre}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm">{correlativoDisplay}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
                         {formatCurrency(registro.monto_depositado)}
                       </td>
