@@ -5,7 +5,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, L
 function DashboardMetas() {
   const currentDate = new Date();
   const [filters, setFilters] = useState({
-    año: currentDate.getFullYear(),
+    anio: currentDate.getFullYear(),
     mes: currentDate.getMonth() + 1,
     sucursal_id: '',
     fecha_corte: currentDate.toISOString().split('T')[0]
@@ -38,7 +38,7 @@ function DashboardMetas() {
     setLoading(true);
     try {
       const params = {
-        año: filters.año,
+        anio: filters.anio,
         mes: filters.mes,
         fecha_corte: filters.fecha_corte
       };
@@ -66,7 +66,7 @@ function DashboardMetas() {
 
   const handleOpenModal = async () => {
     try {
-      const response = await getMetas({ año: filters.año, mes: filters.mes });
+      const response = await getMetas({ anio: filters.anio, mes: filters.mes });
       const metasMap = {};
       response.data.forEach(meta => {
         metasMap[meta.sucursal_id] = meta.meta;
@@ -98,7 +98,7 @@ function DashboardMetas() {
       for (const config of metasConfig) {
         await createMeta({
           sucursal_id: config.sucursal_id,
-          año: filters.año,
+          anio: filters.anio,
           mes: filters.mes,
           meta: config.meta
         });
@@ -189,8 +189,8 @@ function DashboardMetas() {
             <label className="block text-sm font-medium text-gray-700 mb-2">Año</label>
             <input
               type="number"
-              name="año"
-              value={filters.año}
+              name="anio"
+              value={filters.anio}
               onChange={handleFilterChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -369,7 +369,7 @@ function DashboardMetas() {
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-800">
-                Configurar Metas - {meses.find(m => m.value === filters.mes)?.label} {filters.año}
+                Configurar Metas - {meses.find(m => m.value === filters.mes)?.label} {filters.anio}
               </h2>
             </div>
             

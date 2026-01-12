@@ -7,10 +7,10 @@ const router = express.Router();
 // GET /api/metas - listar metas (filtrar por año, mes)
 router.get('/', async (req, res) => {
   try {
-    const { año, mes } = req.query;
+    const { anio, mes } = req.query;
     const where = {};
     
-    if (año) where.año = parseInt(año);
+    if (anio) where.año = parseInt(anio);
     if (mes) where.mes = parseInt(mes);
     
     const metas = await MetaMensual.findAll({
@@ -25,15 +25,15 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/metas/:sucursal_id/:año/:mes - obtener meta específica
-router.get('/:sucursal_id/:año/:mes', async (req, res) => {
+// GET /api/metas/:sucursal_id/:anio/:mes - obtener meta específica
+router.get('/:sucursal_id/:anio/:mes', async (req, res) => {
   try {
-    const { sucursal_id, año, mes } = req.params;
+    const { sucursal_id, anio, mes } = req.params;
     
     const meta = await MetaMensual.findOne({
       where: {
         sucursal_id: parseInt(sucursal_id),
-        año: parseInt(año),
+        año: parseInt(anio),
         mes: parseInt(mes)
       },
       include: [{ model: Sucursal, as: 'sucursal' }]
@@ -52,15 +52,15 @@ router.get('/:sucursal_id/:año/:mes', async (req, res) => {
 // POST /api/metas - crear/actualizar meta
 router.post('/', async (req, res) => {
   try {
-    const { sucursal_id, año, mes, meta } = req.body;
+    const { sucursal_id, anio, mes, meta } = req.body;
     
-    if (!sucursal_id || !año || !mes || meta === undefined) {
+    if (!sucursal_id || !anio || !mes || meta === undefined) {
       return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
     
     const [metaMensual, created] = await MetaMensual.upsert({
       sucursal_id: parseInt(sucursal_id),
-      año: parseInt(año),
+      año: parseInt(anio),
       mes: parseInt(mes),
       meta: parseFloat(meta)
     }, {

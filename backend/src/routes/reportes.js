@@ -60,13 +60,13 @@ router.get('/resumen-global', async (req, res) => {
 // Dashboard de ventas vs metas
 router.get('/dashboard-ventas', async (req, res) => {
   try {
-    const { año, mes, sucursal_id, fecha_corte } = req.query;
+    const { anio, mes, sucursal_id, fecha_corte } = req.query;
     
-    if (!año || !mes) {
+    if (!anio || !mes) {
       return res.status(400).json({ error: 'Año y mes son requeridos' });
     }
     
-    const añoInt = parseInt(año);
+    const añoInt = parseInt(anio);
     const mesInt = parseInt(mes);
     
     // Calculate date range for the month
