@@ -200,21 +200,21 @@ export async function generateResumenDiarioReport(fecha_inicio, fecha_fin) {
 }
 
 // Reporte 3: Resumen global de todas las sucursales
-export async function generateResumenGlobalReport(fecha_inicio, fecha_fin) {
+export async function generateResumenGlobalReport(fecha_inicio, fecha_fin, sucursal_id) {
   const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Resumen Global');
+  const worksheet = workbook.addWorksheet('Detalle Diario');
   
-  // Headers
+  // Headers for daily detail
   worksheet.columns = [
+    { header: 'Fecha', key: 'fecha', width: 12 },
     { header: 'Sucursal', key: 'sucursal', width: 20 },
     { header: 'Total Depositado', key: 'total_depositado', width: 18 },
     { header: 'Total Tarjeta', key: 'total_tarjeta', width: 15 },
     { header: 'Total Sistema', key: 'total_sistema', width: 15 },
-    { header: 'Total Facturado', key: 'total_facturado', width: 17 },
-    { header: 'Total No Facturado', key: 'total_no_facturado', width: 20 },
     { header: 'Total Gastos', key: 'total_gastos', width: 15 },
     { header: 'Total Canjes', key: 'total_canjes', width: 15 },
-    { header: 'Total Meta', key: 'total_meta', width: 15 }
+    { header: 'Total Vendido', key: 'total_vendido', width: 15 },
+    { header: 'Total Facturado', key: 'total_facturado', width: 17 }
   ];
   
   // Style header
@@ -230,105 +230,100 @@ export async function generateResumenGlobalReport(fecha_inicio, fecha_fin) {
   if (fecha_inicio && fecha_fin) {
     where.fecha = { [Op.between]: [fecha_inicio, fecha_fin] };
   }
+  if (sucursal_id) {
+    where.sucursal_id = parseInt(sucursal_id);
+  }
   
   const registros = await RegistroTurno.findAll({
     where,
     include: [
       { model: Sucursal, as: 'sucursal' },
       { model: Cuenta, as: 'cuenta' }
-    ]
+    ],
+    order: [['fecha', 'ASC'], ['sucursal_id', 'ASC']]
   });
   
-  // Group by sucursal
-  const resumen = {};
+  // Group by fecha and sucursal for daily detail
+  const resumenDiario = {};
   
   registros.forEach(registro => {
-    const sucursalId = registro.sucursal_id;
+    const key = `${registro.fecha}_${registro.sucursal_id}`;
     const sucursalNombre = registro.sucursal?.nombre || 'Sin sucursal';
     
-    if (!resumen[sucursalId]) {
-      resumen[sucursalId] = {
+    if (!resumenDiario[key]) {
+      resumenDiario[key] = {
+        fecha: registro.fecha,
         sucursal: sucursalNombre,
+        sucursal_id: registro.sucursal_id,
         total_depositado: 0,
         total_tarjeta: 0,
         total_sistema: 0,
-        total_facturado: 0,
-        total_no_facturado: 0,
         total_gastos: 0,
         total_canjes: 0,
-        total_vendido: 0
+        total_vendido: 0,
+        total_facturado: 0
       };
     }
     
-    resumen[sucursalId].total_depositado += parseFloat(registro.monto_depositado || 0);
-    resumen[sucursalId].total_tarjeta += parseFloat(registro.venta_tarjeta || 0);
-    resumen[sucursalId].total_sistema += parseFloat(registro.total_sistema || 0);
-    resumen[sucursalId].total_facturado += parseFloat(registro.total_facturado || 0);
-    resumen[sucursalId].total_gastos += parseFloat(registro.gastos || 0);
-    resumen[sucursalId].total_canjes += parseFloat(registro.canjes || 0);
-    
-    // Total no facturado = depósitos a cuentas especiales
-    if (registro.cuenta?.es_especial) {
-      resumen[sucursalId].total_no_facturado += parseFloat(registro.monto_depositado || 0);
-    }
+    resumenDiario[key].total_depositado += parseFloat(registro.monto_depositado || 0);
+    resumenDiario[key].total_tarjeta += parseFloat(registro.venta_tarjeta || 0);
+    resumenDiario[key].total_sistema += parseFloat(registro.total_sistema || 0);
+    resumenDiario[key].total_gastos += parseFloat(registro.gastos || 0);
+    resumenDiario[key].total_canjes += parseFloat(registro.canjes || 0);
+    resumenDiario[key].total_vendido += parseFloat(registro.total_vendido || 0);
+    resumenDiario[key].total_facturado += parseFloat(registro.total_facturado || 0);
   });
   
-  // Add data rows
-  Object.values(resumen).forEach(item => {
-    const totalVendido = item.total_sistema - item.total_gastos - item.total_canjes;
-    const totalMeta = totalVendido + item.total_gastos;
-    
+  // Add daily detail rows
+  Object.values(resumenDiario).forEach(item => {
     const row = worksheet.addRow({
+      fecha: item.fecha,
       sucursal: item.sucursal,
       total_depositado: item.total_depositado,
       total_tarjeta: item.total_tarjeta,
       total_sistema: item.total_sistema,
-      total_facturado: item.total_facturado,
-      total_no_facturado: item.total_no_facturado,
       total_gastos: item.total_gastos,
       total_canjes: item.total_canjes,
-      total_meta: totalMeta
+      total_vendido: item.total_vendido,
+      total_facturado: item.total_facturado
     });
     
     // Format currency columns
-    ['total_depositado', 'total_tarjeta', 'total_sistema', 'total_facturado', 'total_no_facturado', 'total_gastos', 'total_canjes', 'total_meta'].forEach(col => {
+    ['total_depositado', 'total_tarjeta', 'total_sistema', 'total_gastos', 'total_canjes', 'total_vendido', 'total_facturado'].forEach(col => {
       row.getCell(col).numFmt = '"Q"#,##0.00';
     });
   });
   
   // Add total row
-  const totales = Object.values(resumen).reduce((acc, item) => {
+  const totales = Object.values(resumenDiario).reduce((acc, item) => {
     acc.total_depositado += item.total_depositado;
     acc.total_tarjeta += item.total_tarjeta;
     acc.total_sistema += item.total_sistema;
-    acc.total_facturado += item.total_facturado;
-    acc.total_no_facturado += item.total_no_facturado;
     acc.total_gastos += item.total_gastos;
     acc.total_canjes += item.total_canjes;
+    acc.total_vendido += item.total_vendido;
+    acc.total_facturado += item.total_facturado;
     return acc;
   }, {
     total_depositado: 0,
     total_tarjeta: 0,
     total_sistema: 0,
-    total_facturado: 0,
-    total_no_facturado: 0,
     total_gastos: 0,
-    total_canjes: 0
+    total_canjes: 0,
+    total_vendido: 0,
+    total_facturado: 0
   });
   
-  const totalVendidoGeneral = totales.total_sistema - totales.total_gastos - totales.total_canjes;
-  const totalMetaGeneral = totalVendidoGeneral + totales.total_gastos;
-  
   const totalRow = worksheet.addRow({
+    fecha: '',
     sucursal: 'TOTAL GENERAL',
     total_depositado: totales.total_depositado,
     total_tarjeta: totales.total_tarjeta,
     total_sistema: totales.total_sistema,
-    total_facturado: totales.total_facturado,
-    total_no_facturado: totales.total_no_facturado,
     total_gastos: totales.total_gastos,
     total_canjes: totales.total_canjes,
-    total_meta: totalMetaGeneral
+    total_vendido: totales.total_vendido,
+    total_facturado: totales.total_facturado
   });
   
   totalRow.font = { bold: true };
@@ -339,7 +334,7 @@ export async function generateResumenGlobalReport(fecha_inicio, fecha_fin) {
   };
   
   // Format currency columns
-  ['total_depositado', 'total_tarjeta', 'total_sistema', 'total_facturado', 'total_no_facturado', 'total_gastos', 'total_canjes', 'total_meta'].forEach(col => {
+  ['total_depositado', 'total_tarjeta', 'total_sistema', 'total_gastos', 'total_canjes', 'total_vendido', 'total_facturado'].forEach(col => {
     totalRow.getCell(col).numFmt = '"Q"#,##0.00';
   });
   

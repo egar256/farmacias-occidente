@@ -4,6 +4,7 @@ import Turno from './Turno.js';
 import Cuenta from './Cuenta.js';
 import RegistroTurno from './RegistroTurno.js';
 import Usuario from './Usuario.js';
+import MetaMensual from './MetaMensual.js';
 
 // Define associations
 RegistroTurno.belongsTo(Sucursal, { foreignKey: 'sucursal_id', as: 'sucursal' });
@@ -13,6 +14,9 @@ RegistroTurno.belongsTo(Cuenta, { foreignKey: 'cuenta_id', as: 'cuenta' });
 Sucursal.hasMany(RegistroTurno, { foreignKey: 'sucursal_id' });
 Turno.hasMany(RegistroTurno, { foreignKey: 'turno_id' });
 Cuenta.hasMany(RegistroTurno, { foreignKey: 'cuenta_id' });
+
+MetaMensual.belongsTo(Sucursal, { foreignKey: 'sucursal_id', as: 'sucursal' });
+Sucursal.hasMany(MetaMensual, { foreignKey: 'sucursal_id' });
 
 // Initialize database with seed data
 export async function initializeDatabase() {
@@ -79,4 +83,4 @@ export async function initializeDatabase() {
   }
 }
 
-export { sequelize, Sucursal, Turno, Cuenta, RegistroTurno, Usuario };
+export { sequelize, Sucursal, Turno, Cuenta, RegistroTurno, Usuario, MetaMensual };
