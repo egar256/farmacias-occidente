@@ -8,6 +8,7 @@ import Reportes from './pages/Reportes';
 import Sucursales from './pages/Sucursales';
 import Turnos from './pages/Turnos';
 import Cuentas from './pages/Cuentas';
+import DashboardMetas from './pages/DashboardMetas';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/listado-registros" element={<ListadoRegistros />} />
           <Route path="/resumen-sucursal" element={<ResumenSucursal />} />
           <Route path="/reportes" element={<Reportes />} />
+          <Route path="/dashboard-metas" element={<DashboardMetas />} />
           <Route path="/sucursales" element={<Sucursales />} />
           <Route path="/turnos" element={<Turnos />} />
           <Route path="/cuentas" element={<Cuentas />} />

@@ -1,11 +1,32 @@
-import { useState } from 'react';
-import { downloadReporteDetalle, downloadReporteResumenDiario, downloadReporteResumenGlobal } from '../services/api';
+import { useState, useEffect } from 'react';
+import { downloadReporteDetalle, downloadReporteResumenDiario, downloadReporteResumenGlobal, getSucursales } from '../services/api';
 
 function Reportes() {
   const [filters, setFilters] = useState({
     fecha_inicio: '',
     fecha_fin: ''
   });
+  
+  const [reporte3Filters, setReporte3Filters] = useState({
+    fecha_inicio: '',
+    fecha_fin: '',
+    sucursal_id: ''
+  });
+  
+  const [sucursales, setSucursales] = useState([]);
+
+  useEffect(() => {
+    loadSucursales();
+  }, []);
+
+  const loadSucursales = async () => {
+    try {
+      const response = await getSucursales();
+      setSucursales(response.data);
+    } catch (error) {
+      console.error('Error al cargar sucursales:', error);
+    }
+  };
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -14,21 +35,34 @@ function Reportes() {
       [name]: value
     }));
   };
+  
+  const handleReporte3FilterChange = (e) => {
+    const { name, value } = e.target;
+    setReporte3Filters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
   const handleDownload = (reportType) => {
-    const params = {};
-    if (filters.fecha_inicio) params.fecha_inicio = filters.fecha_inicio;
-    if (filters.fecha_fin) params.fecha_fin = filters.fecha_fin;
-
+    let params = {};
     let url;
+    
     switch (reportType) {
       case 'detalle':
+        if (filters.fecha_inicio) params.fecha_inicio = filters.fecha_inicio;
+        if (filters.fecha_fin) params.fecha_fin = filters.fecha_fin;
         url = downloadReporteDetalle(params);
         break;
       case 'resumen-diario':
+        if (filters.fecha_inicio) params.fecha_inicio = filters.fecha_inicio;
+        if (filters.fecha_fin) params.fecha_fin = filters.fecha_fin;
         url = downloadReporteResumenDiario(params);
         break;
       case 'resumen-global':
+        if (reporte3Filters.fecha_inicio) params.fecha_inicio = reporte3Filters.fecha_inicio;
+        if (reporte3Filters.fecha_fin) params.fecha_fin = reporte3Filters.fecha_fin;
+        if (reporte3Filters.sucursal_id) params.sucursal_id = reporte3Filters.sucursal_id;
         url = downloadReporteResumenGlobal(params);
         break;
       default:
@@ -121,8 +155,56 @@ function Reportes() {
           </div>
           <h3 className="text-xl font-semibold text-gray-800 mb-2">Reporte 3</h3>
           <p className="text-gray-600 mb-4 text-sm">
-            Resumen global de todas las sucursales
+            Resumen global - Detalle diario por sucursal
           </p>
+          
+          <div className="mb-4 space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Sucursal
+              </label>
+              <select
+                name="sucursal_id"
+                value={reporte3Filters.sucursal_id}
+                onChange={handleReporte3FilterChange}
+                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">Todas las sucursales</option>
+                {sucursales.map(sucursal => (
+                  <option key={sucursal.id} value={sucursal.id}>
+                    {sucursal.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Fecha Inicio
+              </label>
+              <input
+                type="date"
+                name="fecha_inicio"
+                value={reporte3Filters.fecha_inicio}
+                onChange={handleReporte3FilterChange}
+                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Fecha Fin
+              </label>
+              <input
+                type="date"
+                name="fecha_fin"
+                value={reporte3Filters.fecha_fin}
+                onChange={handleReporte3FilterChange}
+                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+          </div>
+          
           <button
             onClick={() => handleDownload('resumen-global')}
             className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg shadow transition"
@@ -137,7 +219,7 @@ function Reportes() {
         <ul className="text-sm text-blue-700 space-y-1">
           <li>• <strong>Reporte 1:</strong> Incluye todos los turnos con sus detalles completos y marca los registros con faltante (diferencia negativa entre ventas y sistema)</li>
           <li>• <strong>Reporte 2:</strong> Agrupa por día y sucursal, incluye columna "Tiene Faltante" (SÍ/NO)</li>
-          <li>• <strong>Reporte 3:</strong> Resumen consolidado por sucursal con totales generales, incluye total no facturado (cuentas especiales) y total meta</li>
+          <li>• <strong>Reporte 3:</strong> Detalle diario de ventas por sucursal. Puedes filtrar por sucursal específica o ver todas, y aplicar rango de fechas.</li>
         </ul>
       </div>
     </div>

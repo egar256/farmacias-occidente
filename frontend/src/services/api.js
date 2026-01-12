@@ -61,4 +61,12 @@ export const createUsuario = (data) => api.post('/usuarios', data);
 export const updateUsuario = (id, data) => api.put(`/usuarios/${id}`, data);
 export const deleteUsuario = (id) => api.delete(`/usuarios/${id}`);
 
+// Metas
+export const getMetas = (params) => api.get('/metas', { params });
+export const getMetaEspecifica = (sucursal_id, año, mes) => api.get(`/metas/${sucursal_id}/${año}/${mes}`);
+export const createMeta = (data) => api.post('/metas', data);
+export const updateMeta = (id, data) => api.put(`/metas/${id}`, data);
+export const deleteMeta = (id) => api.delete(`/metas/${id}`);
+export const getDashboardVentas = (params) => api.get('/reportes/dashboard-ventas', { params });
+
 export default api;

@@ -48,6 +48,12 @@ function Layout({ children }) {
               Reportes Excel
             </Link>
             <Link
+              to="/dashboard-metas"
+              className={`px-3 py-2 rounded-t text-sm font-medium hover:bg-blue-700 transition ${isActive('/dashboard-metas')}`}
+            >
+              Metas y Ventas
+            </Link>
+            <Link
               to="/sucursales"
               className={`px-3 py-2 rounded-t text-sm font-medium hover:bg-blue-700 transition ${isActive('/sucursales')}`}
             >
