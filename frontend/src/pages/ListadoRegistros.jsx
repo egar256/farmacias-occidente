@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getRegistros, getSucursales, getTurnos, deleteRegistro } from '../services/api';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import { FaPencilAlt } from 'react-icons/fa';
 
 function ListadoRegistros() {
+  const navigate = useNavigate();
   const [registros, setRegistros] = useState([]);
   const [sucursales, setSucursales] = useState([]);
   const [turnos, setTurnos] = useState([]);
@@ -88,6 +91,10 @@ function ListadoRegistros() {
       console.error('Error deleting registro:', error);
       alert('Error al eliminar registro');
     }
+  };
+
+  const handleEdit = (id) => {
+    navigate(`/registro-ventas?id=${id}`);
   };
 
   if (loading) {
@@ -200,6 +207,8 @@ function ListadoRegistros() {
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tarjeta</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Ventas</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Sistema</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Gastos</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Canjes</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Faltante</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acciones</th>
                 </tr>
@@ -237,10 +246,24 @@ function ListadoRegistros() {
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
                         {formatCurrency(registro.total_sistema)}
                       </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
+                        {formatCurrency(registro.gastos)}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-blue-600">
+                        {formatCurrency(registro.canjes)}
+                      </td>
                       <td className={`px-4 py-3 whitespace-nowrap text-sm text-right font-bold ${tieneFaltante ? 'text-red-600' : 'text-green-600'}`}>
                         {formatCurrency(faltante)}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-center">
+                        <button
+                          onClick={() => handleEdit(registro.id)}
+                          className="text-blue-600 hover:text-blue-800 font-medium mr-3 inline-flex items-center"
+                          title="Editar"
+                        >
+                          <FaPencilAlt className="mr-1" />
+                          Editar
+                        </button>
                         <button
                           onClick={() => handleDelete(registro.id)}
                           className="text-red-600 hover:text-red-800 font-medium"
