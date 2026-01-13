@@ -532,7 +532,10 @@ export async function generateDepositosCuentaReport(fecha_desde, fecha_hasta, cu
   }
   
   // Only get registros with deposits
-  where.cuenta_id = { [Op.ne]: null };
+  // Only apply the "not null" check if no specific cuenta_id was requested
+  if (!cuenta_id) {
+    where.cuenta_id = { [Op.ne]: null };
+  }
   where.monto_depositado = { [Op.gt]: 0 };
   
   const registros = await RegistroTurno.findAll({

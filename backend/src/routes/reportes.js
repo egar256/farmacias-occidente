@@ -221,7 +221,10 @@ router.get('/depositos-cuenta', async (req, res) => {
     }
     
     // Only get registros with deposits (cuenta_id not null and monto_depositado > 0)
-    where.cuenta_id = { [Op.ne]: null };
+    // Only apply the "not null" check if no specific cuenta_id was requested
+    if (!cuenta_id) {
+      where.cuenta_id = { [Op.ne]: null };
+    }
     where.monto_depositado = { [Op.gt]: 0 };
     
     const registros = await RegistroTurno.findAll({

@@ -77,7 +77,13 @@ function ReporteDepositos() {
     if (filters.sucursal_id) params.sucursal_id = filters.sucursal_id;
     
     const url = downloadReporteDepositosCuenta(params);
-    window.location.href = url;
+    // Use anchor tag for better SPA compatibility
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'reporte-depositos-cuenta.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
