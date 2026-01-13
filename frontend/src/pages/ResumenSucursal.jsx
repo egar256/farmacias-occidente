@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getResumenSucursal, getSucursales } from '../services/api';
 import { formatCurrency } from '../utils/formatters';
+import { FaFileExcel, FaFilePdf } from 'react-icons/fa';
 
 function ResumenSucursal() {
   const [resumen, setResumen] = useState([]);
@@ -67,6 +68,28 @@ function ResumenSucursal() {
       sucursal_id: ''
     });
     loadData();
+  };
+
+  const handleExportExcel = () => {
+    const params = new URLSearchParams({
+      formato: 'excel',
+      ...(filters.fecha_inicio && { fecha_inicio: filters.fecha_inicio }),
+      ...(filters.fecha_fin && { fecha_fin: filters.fecha_fin }),
+      ...(filters.sucursal_id && { sucursal_id: filters.sucursal_id })
+    });
+    
+    window.location.href = `/api/reportes/resumen-sucursal/export?${params.toString()}`;
+  };
+
+  const handleExportPDF = () => {
+    const params = new URLSearchParams({
+      formato: 'pdf',
+      ...(filters.fecha_inicio && { fecha_inicio: filters.fecha_inicio }),
+      ...(filters.fecha_fin && { fecha_fin: filters.fecha_fin }),
+      ...(filters.sucursal_id && { sucursal_id: filters.sucursal_id })
+    });
+    
+    window.location.href = `/api/reportes/resumen-sucursal/export?${params.toString()}`;
   };
 
   if (loading) {
@@ -140,6 +163,20 @@ function ResumenSucursal() {
             className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow transition"
           >
             Limpiar Filtros
+          </button>
+          <button
+            onClick={handleExportExcel}
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow transition inline-flex items-center"
+          >
+            <FaFileExcel className="mr-2" />
+            Exportar Excel
+          </button>
+          <button
+            onClick={handleExportPDF}
+            className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg shadow transition inline-flex items-center"
+          >
+            <FaFilePdf className="mr-2" />
+            Exportar PDF
           </button>
         </div>
       </div>

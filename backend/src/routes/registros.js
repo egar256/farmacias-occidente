@@ -78,8 +78,8 @@ router.post('/', async (req, res) => {
     // Total de ventas = depósito + tarjeta
     data.total_ventas = parseFloat(data.monto_depositado || 0) + parseFloat(data.venta_tarjeta || 0);
     
-    // Total vendido = Total sistema - Gastos - Canjes
-    data.total_vendido = parseFloat(data.total_sistema || 0) - parseFloat(data.gastos || 0) - parseFloat(data.canjes || 0);
+    // Total vendido = Total sistema - Gastos (Canjes NO se resta, es solo informativo)
+    data.total_vendido = parseFloat(data.total_sistema || 0) - parseFloat(data.gastos || 0);
     
     // Total facturado = Total de ventas
     data.total_facturado = data.total_ventas;
@@ -115,8 +115,8 @@ router.put('/:id', async (req, res) => {
     // Total de ventas = depósito + tarjeta
     data.total_ventas = parseFloat(data.monto_depositado || 0) + parseFloat(data.venta_tarjeta || 0);
     
-    // Total vendido = Total sistema - Gastos - Canjes
-    data.total_vendido = parseFloat(data.total_sistema || 0) - parseFloat(data.gastos || 0) - parseFloat(data.canjes || 0);
+    // Total vendido = Total sistema - Gastos (Canjes NO se resta, es solo informativo)
+    data.total_vendido = parseFloat(data.total_sistema || 0) - parseFloat(data.gastos || 0);
     
     // Total facturado = Total de ventas
     data.total_facturado = data.total_ventas;
@@ -220,9 +220,9 @@ router.get('/resumen/sucursal', async (req, res) => {
       }
     }
     
-    // Calculate total_meta = total_vendido + gastos
+    // Calculate total_meta = total_vendido + gastos (Canjes NO se resta)
     for (const sucursalId in resumen) {
-      const totalVendido = resumen[sucursalId].total_sistema - resumen[sucursalId].total_gastos - resumen[sucursalId].total_canjes;
+      const totalVendido = resumen[sucursalId].total_sistema - resumen[sucursalId].total_gastos;
       resumen[sucursalId].total_meta = totalVendido + resumen[sucursalId].total_gastos;
     }
     

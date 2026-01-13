@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getSucursales, getTurnos, getCuentas, createRegistro } from '../services/api';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { getSucursales, getTurnos, getCuentas, createRegistro, getRegistro, updateRegistro } from '../services/api';
 import { formatCurrency, parseNumber } from '../utils/formatters';
 
 function RegistroVentas() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const registroId = searchParams.get('id');
+  const isEditMode = !!registroId;
+  
   const [sucursales, setSucursales] = useState([]);
   const [turnos, setTurnos] = useState([]);
   const [cuentas, setCuentas] = useState([]);
@@ -48,6 +52,27 @@ function RegistroVentas() {
       setSucursales(sucursalesRes.data.filter(s => s.activo));
       setTurnos(turnosRes.data.filter(t => t.activo));
       setCuentas(cuentasRes.data.filter(c => c.activo));
+      
+      // If in edit mode, load the registro data
+      if (isEditMode) {
+        const registroRes = await getRegistro(registroId);
+        const registro = registroRes.data;
+        
+        setFormData({
+          fecha: registro.fecha,
+          sucursal_id: registro.sucursal_id.toString(),
+          turno_id: registro.turno_id.toString(),
+          correlativo_inicial: registro.correlativo_inicial || '',
+          correlativo_final: registro.correlativo_final || '',
+          cuenta_id: registro.cuenta_id ? registro.cuenta_id.toString() : '',
+          monto_depositado: registro.monto_depositado?.toString() || '0',
+          venta_tarjeta: registro.venta_tarjeta?.toString() || '0',
+          total_sistema: registro.total_sistema?.toString() || '0',
+          gastos: registro.gastos?.toString() || '0',
+          canjes: registro.canjes?.toString() || '0',
+          observaciones: registro.observaciones || ''
+        });
+      }
     } catch (error) {
       console.error('Error loading form data:', error);
       alert('Error al cargar datos del formulario');
@@ -62,7 +87,7 @@ function RegistroVentas() {
     const canjes = parseNumber(formData.canjes);
 
     const total_ventas = depositado + tarjeta;
-    const total_vendido = sistema - gastos - canjes;
+    const total_vendido = sistema - gastos; // Canjes NO se resta, es solo informativo
     const total_facturado = total_ventas;
 
     setCalculated({
@@ -97,15 +122,20 @@ function RegistroVentas() {
 
     setLoading(true);
     try {
-      await createRegistro(formData);
-      alert('Registro creado exitosamente');
+      if (isEditMode) {
+        await updateRegistro(registroId, formData);
+        alert('Registro actualizado exitosamente');
+      } else {
+        await createRegistro(formData);
+        alert('Registro creado exitosamente');
+      }
       navigate('/listado-registros');
     } catch (error) {
-      console.error('Error creating registro:', error);
+      console.error('Error saving registro:', error);
       if (error.response?.data?.error?.includes('UNIQUE constraint failed')) {
         alert('Ya existe un registro para esta fecha, sucursal y turno');
       } else {
-        alert('Error al crear registro: ' + (error.response?.data?.error || error.message));
+        alert('Error al guardar registro: ' + (error.response?.data?.error || error.message));
       }
     } finally {
       setLoading(false);
@@ -114,7 +144,9 @@ function RegistroVentas() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Registro de Ventas por Turno</h1>
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">
+        {isEditMode ? 'Editar Registro de Ventas' : 'Registro de Ventas por Turno'}
+      </h1>
       
       <div className="bg-white rounded-lg shadow p-6">
         <form onSubmit={handleSubmit}>
@@ -316,7 +348,7 @@ function RegistroVentas() {
               <div>
                 <div className="text-sm text-gray-600">Total Vendido</div>
                 <div className="text-xl font-bold text-green-600">{formatCurrency(calculated.total_vendido)}</div>
-                <div className="text-xs text-gray-500">Sistema - Gastos - Canjes</div>
+                <div className="text-xs text-gray-500">Sistema - Gastos</div>
               </div>
               <div>
                 <div className="text-sm text-gray-600">Total Facturado</div>
@@ -332,7 +364,7 @@ function RegistroVentas() {
               disabled={loading}
               className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg shadow transition disabled:opacity-50"
             >
-              {loading ? 'Guardando...' : 'Guardar Registro'}
+              {loading ? 'Guardando...' : (isEditMode ? 'Actualizar' : 'Guardar Registro')}
             </button>
             <button
               type="button"
