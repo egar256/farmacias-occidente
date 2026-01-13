@@ -1,29 +1,36 @@
 import { useState, useEffect } from 'react';
-import { getSucursales, createSucursal, updateSucursal, deleteSucursal } from '../services/api';
+import { getSucursales, createSucursal, updateSucursal, deleteSucursal, getDistritos } from '../services/api';
 
 function Sucursales() {
   const [sucursales, setSucursales] = useState([]);
+  const [distritos, setDistritos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     nombre: '',
     direccion: '',
+    distrito_id: '',
+    dias_atencion: 'L,M,X,J,V,S',
     activo: true
   });
 
   useEffect(() => {
-    loadSucursales();
+    loadData();
   }, []);
 
-  const loadSucursales = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const response = await getSucursales();
-      setSucursales(response.data);
+      const [sucursalesRes, distritosRes] = await Promise.all([
+        getSucursales(),
+        getDistritos()
+      ]);
+      setSucursales(sucursalesRes.data);
+      setDistritos(distritosRes.data);
     } catch (error) {
-      console.error('Error loading sucursales:', error);
-      alert('Error al cargar sucursales');
+      console.error('Error loading data:', error);
+      alert('Error al cargar datos');
     } finally {
       setLoading(false);
     }
@@ -34,6 +41,24 @@ function Sucursales() {
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+  
+  const handleDiasAtencionChange = (dia) => {
+    const diasActuales = formData.dias_atencion.split(',').filter(d => d.trim());
+    let nuevosDias;
+    
+    if (diasActuales.includes(dia)) {
+      // Remove day
+      nuevosDias = diasActuales.filter(d => d !== dia);
+    } else {
+      // Add day
+      nuevosDias = [...diasActuales, dia];
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      dias_atencion: nuevosDias.join(',')
     }));
   };
 
@@ -56,8 +81,8 @@ function Sucursales() {
       
       setShowForm(false);
       setEditingId(null);
-      setFormData({ nombre: '', direccion: '', activo: true });
-      loadSucursales();
+      setFormData({ nombre: '', direccion: '', distrito_id: '', dias_atencion: 'L,M,X,J,V,S', activo: true });
+      loadData();
     } catch (error) {
       console.error('Error saving sucursal:', error);
       alert('Error al guardar sucursal: ' + (error.response?.data?.error || error.message));
@@ -69,6 +94,8 @@ function Sucursales() {
     setFormData({
       nombre: sucursal.nombre,
       direccion: sucursal.direccion || '',
+      distrito_id: sucursal.distrito_id || '',
+      dias_atencion: sucursal.dias_atencion || 'L,M,X,J,V,S',
       activo: sucursal.activo
     });
     setShowForm(true);
@@ -82,7 +109,7 @@ function Sucursales() {
     try {
       await deleteSucursal(id);
       alert('Sucursal eliminada exitosamente');
-      loadSucursales();
+      loadData();
     } catch (error) {
       console.error('Error deleting sucursal:', error);
       alert('Error al eliminar sucursal');
@@ -92,7 +119,7 @@ function Sucursales() {
   const handleCancel = () => {
     setShowForm(false);
     setEditingId(null);
-    setFormData({ nombre: '', direccion: '', activo: true });
+    setFormData({ nombre: '', direccion: '', distrito_id: '', dias_atencion: 'L,M,X,J,V,S', activo: true });
   };
 
   if (loading) {
@@ -148,6 +175,50 @@ function Sucursales() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Distrito
+                </label>
+                <select
+                  name="distrito_id"
+                  value={formData.distrito_id}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Seleccionar...</option>
+                  {distritos.map(d => (
+                    <option key={d.id} value={d.id}>{d.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Días de atención
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { value: 'L', label: 'Lun' },
+                    { value: 'M', label: 'Mar' },
+                    { value: 'X', label: 'Mié' },
+                    { value: 'J', label: 'Jue' },
+                    { value: 'V', label: 'Vie' },
+                    { value: 'S', label: 'Sáb' },
+                    { value: 'D', label: 'Dom' }
+                  ].map(dia => (
+                    <label key={dia.value} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.dias_atencion.split(',').includes(dia.value)}
+                        onChange={() => handleDiasAtencionChange(dia.value)}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mr-1"
+                      />
+                      <span className="text-sm">{dia.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
 
               <div className="flex items-center">
                 <input
@@ -193,6 +264,8 @@ function Sucursales() {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dirección</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Distrito</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Días de Atención</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Estado</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acciones</th>
               </tr>
@@ -202,6 +275,8 @@ function Sucursales() {
                 <tr key={sucursal.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{sucursal.nombre}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">{sucursal.direccion || '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">{sucursal.distrito?.nombre || '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">{sucursal.dias_atencion || 'L,M,X,J,V,S'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${sucursal.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                       {sucursal.activo ? 'Activo' : 'Inactivo'}
