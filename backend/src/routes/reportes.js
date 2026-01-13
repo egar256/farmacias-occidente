@@ -1,7 +1,7 @@
 import express from 'express';
-import { generateDetalleReport, generateResumenDiarioReport, generateResumenGlobalReport, generateResumenSucursalReport } from '../services/excelService.js';
+import { generateDetalleReport, generateResumenDiarioReport, generateResumenGlobalReport, generateResumenSucursalReport, generateDepositosCuentaReport } from '../services/excelService.js';
 import { generateResumenSucursalPDF } from '../services/pdfService.js';
-import { RegistroTurno, Sucursal, MetaMensual } from '../models/index.js';
+import { RegistroTurno, Sucursal, MetaMensual, Turno, Cuenta } from '../models/index.js';
 import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
 
@@ -104,8 +104,7 @@ router.get('/dashboard-ventas', async (req, res) => {
     const registros = await RegistroTurno.findAll({
       attributes: [
         'sucursal_id',
-        [sequelize.fn('SUM', sequelize.col('total_vendido')), 'total_vendido'],
-        [sequelize.fn('SUM', sequelize.col('gastos')), 'total_gastos'],
+        [sequelize.fn('SUM', sequelize.col('total_meta')), 'total_meta'],
         [sequelize.fn('COUNT', sequelize.fn('DISTINCT', sequelize.col('fecha'))), 'dias_con_ventas']
       ],
       where,
@@ -132,22 +131,20 @@ router.get('/dashboard-ventas', async (req, res) => {
     // Build response
     const result = registros.map(registro => {
       const sucursalId = registro.sucursal_id;
-      const totalVendido = parseFloat(registro.dataValues.total_vendido || 0);
-      const totalGastos = parseFloat(registro.dataValues.total_gastos || 0);
-      const totalVentas = totalVendido + totalGastos;
+      const totalMeta = parseFloat(registro.dataValues.total_meta || 0);
       const meta = metasMap[sucursalId] || 0;
       const diasConVentas = parseInt(registro.dataValues.dias_con_ventas || 0);
       
       // Calculate percentages and projections
-      const pctActual = meta > 0 ? totalVentas / meta : 0;
-      const proyeccion = diasTranscurridos > 0 ? (totalVentas / diasTranscurridos) * diasMes : 0;
+      const pctActual = meta > 0 ? totalMeta / meta : 0;
+      const proyeccion = diasTranscurridos > 0 ? (totalMeta / diasTranscurridos) * diasMes : 0;
       const pctProyectado = meta > 0 ? proyeccion / meta : 0;
       const desvio = proyeccion - meta;
       
       return {
         sucursal_id: sucursalId,
         sucursal_nombre: registro.sucursal?.nombre || '',
-        total_ventas: totalVentas,
+        total_ventas: totalMeta,
         meta: meta,
         dias_con_ventas: diasConVentas,
         dias_mes: diasMes,
@@ -193,6 +190,130 @@ router.get('/resumen-sucursal/export', async (req, res) => {
     }
   } catch (error) {
     console.error('Error generating export:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Reporte de Depósitos por Cuenta
+router.get('/depositos-cuenta', async (req, res) => {
+  try {
+    const { fecha_desde, fecha_hasta, cuenta_id, sucursal_id } = req.query;
+    
+    const where = {};
+    
+    // Filter by date range
+    if (fecha_desde && fecha_hasta) {
+      where.fecha = { [Op.between]: [fecha_desde, fecha_hasta] };
+    } else if (fecha_desde) {
+      where.fecha = { [Op.gte]: fecha_desde };
+    } else if (fecha_hasta) {
+      where.fecha = { [Op.lte]: fecha_hasta };
+    }
+    
+    // Filter by cuenta
+    if (cuenta_id) {
+      where.cuenta_id = parseInt(cuenta_id);
+    }
+    
+    // Filter by sucursal
+    if (sucursal_id) {
+      where.sucursal_id = parseInt(sucursal_id);
+    }
+    
+    // Only get registros with deposits (cuenta_id not null and monto_depositado > 0)
+    where.cuenta_id = { [Op.ne]: null };
+    where.monto_depositado = { [Op.gt]: 0 };
+    
+    const registros = await RegistroTurno.findAll({
+      where,
+      include: [
+        { model: Sucursal, as: 'sucursal', attributes: ['id', 'nombre'] },
+        { model: Turno, as: 'turno', attributes: ['id', 'nombre'] },
+        { model: Cuenta, as: 'cuenta', attributes: ['id', 'numero', 'nombre', 'banco', 'es_especial'] }
+      ],
+      order: [['fecha', 'DESC'], ['sucursal_id', 'ASC']]
+    });
+    
+    // Build resumen por cuenta
+    const resumenPorCuenta = {};
+    const detalle = [];
+    let totalGeneral = 0;
+    let totalCuentasNormales = 0;
+    let totalCuentasEspeciales = 0;
+    
+    registros.forEach(registro => {
+      const cuenta = registro.cuenta;
+      const monto = parseFloat(registro.monto_depositado || 0);
+      
+      if (!cuenta) return;
+      
+      // Add to resumen
+      if (!resumenPorCuenta[cuenta.id]) {
+        resumenPorCuenta[cuenta.id] = {
+          cuenta_id: cuenta.id,
+          cuenta_numero: cuenta.numero,
+          cuenta_nombre: cuenta.nombre,
+          banco: cuenta.banco,
+          es_especial: cuenta.es_especial,
+          total_depositado: 0,
+          cantidad_depositos: 0
+        };
+      }
+      
+      resumenPorCuenta[cuenta.id].total_depositado += monto;
+      resumenPorCuenta[cuenta.id].cantidad_depositos += 1;
+      
+      // Add to totals
+      totalGeneral += monto;
+      if (cuenta.es_especial) {
+        totalCuentasEspeciales += monto;
+      } else {
+        totalCuentasNormales += monto;
+      }
+      
+      // Add to detalle
+      detalle.push({
+        id: registro.id,
+        fecha: registro.fecha,
+        sucursal_nombre: registro.sucursal?.nombre || '',
+        turno_nombre: registro.turno?.nombre || '',
+        cuenta_numero: cuenta.numero,
+        cuenta_nombre: cuenta.nombre,
+        banco: cuenta.banco,
+        es_especial: cuenta.es_especial,
+        monto_depositado: monto
+      });
+    });
+    
+    res.json({
+      resumen_por_cuenta: Object.values(resumenPorCuenta),
+      detalle: detalle,
+      totales: {
+        total_general: totalGeneral,
+        total_cuentas_normales: totalCuentasNormales,
+        total_cuentas_especiales: totalCuentasEspeciales
+      }
+    });
+  } catch (error) {
+    console.error('Error en depositos-cuenta:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Reporte de Depósitos por Cuenta - Excel Export
+router.get('/depositos-cuenta/excel', async (req, res) => {
+  try {
+    const { fecha_desde, fecha_hasta, cuenta_id, sucursal_id } = req.query;
+    
+    const workbook = await generateDepositosCuentaReport(fecha_desde, fecha_hasta, cuenta_id, sucursal_id);
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=reporte-depositos-cuenta.xlsx');
+    
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('Error generating depositos excel:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -504,3 +504,212 @@ export async function generateResumenSucursalReport(fecha_inicio, fecha_fin, suc
   
   return workbook;
 }
+
+// Reporte: Depósitos por Cuenta
+export async function generateDepositosCuentaReport(fecha_desde, fecha_hasta, cuenta_id, sucursal_id) {
+  const workbook = new ExcelJS.Workbook();
+  
+  // Get data
+  const where = {};
+  
+  // Filter by date range
+  if (fecha_desde && fecha_hasta) {
+    where.fecha = { [Op.between]: [fecha_desde, fecha_hasta] };
+  } else if (fecha_desde) {
+    where.fecha = { [Op.gte]: fecha_desde };
+  } else if (fecha_hasta) {
+    where.fecha = { [Op.lte]: fecha_hasta };
+  }
+  
+  // Filter by cuenta
+  if (cuenta_id) {
+    where.cuenta_id = parseInt(cuenta_id);
+  }
+  
+  // Filter by sucursal
+  if (sucursal_id) {
+    where.sucursal_id = parseInt(sucursal_id);
+  }
+  
+  // Only get registros with deposits
+  where.cuenta_id = { [Op.ne]: null };
+  where.monto_depositado = { [Op.gt]: 0 };
+  
+  const registros = await RegistroTurno.findAll({
+    where,
+    include: [
+      { model: Sucursal, as: 'sucursal', attributes: ['id', 'nombre'] },
+      { model: Turno, as: 'turno', attributes: ['id', 'nombre'] },
+      { model: Cuenta, as: 'cuenta', attributes: ['id', 'numero', 'nombre', 'banco', 'es_especial'] }
+    ],
+    order: [['cuenta_id', 'ASC'], ['fecha', 'DESC']]
+  });
+  
+  // Build resumen por cuenta
+  const resumenPorCuenta = {};
+  let totalGeneral = 0;
+  let totalCuentasNormales = 0;
+  let totalCuentasEspeciales = 0;
+  
+  registros.forEach(registro => {
+    const cuenta = registro.cuenta;
+    const monto = parseFloat(registro.monto_depositado || 0);
+    
+    if (!cuenta) return;
+    
+    // Add to resumen
+    if (!resumenPorCuenta[cuenta.id]) {
+      resumenPorCuenta[cuenta.id] = {
+        cuenta_numero: cuenta.numero,
+        cuenta_nombre: cuenta.nombre,
+        banco: cuenta.banco,
+        es_especial: cuenta.es_especial,
+        total_depositado: 0,
+        cantidad_depositos: 0
+      };
+    }
+    
+    resumenPorCuenta[cuenta.id].total_depositado += monto;
+    resumenPorCuenta[cuenta.id].cantidad_depositos += 1;
+    
+    // Add to totals
+    totalGeneral += monto;
+    if (cuenta.es_especial) {
+      totalCuentasEspeciales += monto;
+    } else {
+      totalCuentasNormales += monto;
+    }
+  });
+  
+  // Sheet 1: Resumen por Cuenta
+  const resumenSheet = workbook.addWorksheet('Resumen por Cuenta');
+  
+  resumenSheet.columns = [
+    { header: 'Cuenta', key: 'cuenta', width: 25 },
+    { header: 'Banco', key: 'banco', width: 20 },
+    { header: 'Tipo', key: 'tipo', width: 15 },
+    { header: 'Total Depositado', key: 'total_depositado', width: 18 },
+    { header: '# Depósitos', key: 'cantidad_depositos', width: 15 }
+  ];
+  
+  // Style header
+  resumenSheet.getRow(1).font = { bold: true };
+  resumenSheet.getRow(1).fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFD3D3D3' }
+  };
+  
+  // Add data rows
+  Object.values(resumenPorCuenta).forEach(item => {
+    const row = resumenSheet.addRow({
+      cuenta: `${item.cuenta_numero} - ${item.cuenta_nombre}`,
+      banco: item.banco,
+      tipo: item.es_especial ? 'ESPECIAL' : 'NORMAL',
+      total_depositado: item.total_depositado,
+      cantidad_depositos: item.cantidad_depositos
+    });
+    
+    // Highlight special accounts
+    if (item.es_especial) {
+      row.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFFF4CC' }
+      };
+    }
+    
+    // Format currency
+    row.getCell('total_depositado').numFmt = '"Q"#,##0.00';
+  });
+  
+  // Add totals
+  resumenSheet.addRow({});
+  const totalRow = resumenSheet.addRow({
+    cuenta: 'TOTAL GENERAL',
+    banco: '',
+    tipo: '',
+    total_depositado: totalGeneral,
+    cantidad_depositos: Object.values(resumenPorCuenta).reduce((sum, item) => sum + item.cantidad_depositos, 0)
+  });
+  
+  totalRow.font = { bold: true };
+  totalRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFFFCC00' }
+  };
+  totalRow.getCell('total_depositado').numFmt = '"Q"#,##0.00';
+  
+  // Add subtotals
+  const normalRow = resumenSheet.addRow({
+    cuenta: 'Total Cuentas Normales',
+    banco: '',
+    tipo: '',
+    total_depositado: totalCuentasNormales,
+    cantidad_depositos: ''
+  });
+  normalRow.font = { bold: true };
+  normalRow.getCell('total_depositado').numFmt = '"Q"#,##0.00';
+  
+  const especialRow = resumenSheet.addRow({
+    cuenta: 'Total Cuentas Especiales (No Facturado)',
+    banco: '',
+    tipo: '',
+    total_depositado: totalCuentasEspeciales,
+    cantidad_depositos: ''
+  });
+  especialRow.font = { bold: true };
+  especialRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFFFF4CC' }
+  };
+  especialRow.getCell('total_depositado').numFmt = '"Q"#,##0.00';
+  
+  // Sheet 2: Detalle de Depósitos
+  const detalleSheet = workbook.addWorksheet('Detalle de Depósitos');
+  
+  detalleSheet.columns = [
+    { header: 'Fecha', key: 'fecha', width: 12 },
+    { header: 'Sucursal', key: 'sucursal', width: 20 },
+    { header: 'Turno', key: 'turno', width: 15 },
+    { header: 'Cuenta', key: 'cuenta', width: 25 },
+    { header: 'Banco', key: 'banco', width: 20 },
+    { header: 'Monto', key: 'monto', width: 15 }
+  ];
+  
+  // Style header
+  detalleSheet.getRow(1).font = { bold: true };
+  detalleSheet.getRow(1).fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFD3D3D3' }
+  };
+  
+  // Add detail rows
+  registros.forEach(registro => {
+    const row = detalleSheet.addRow({
+      fecha: registro.fecha,
+      sucursal: registro.sucursal?.nombre || '',
+      turno: registro.turno?.nombre || '',
+      cuenta: `${registro.cuenta.numero} - ${registro.cuenta.nombre}`,
+      banco: registro.cuenta.banco,
+      monto: parseFloat(registro.monto_depositado || 0)
+    });
+    
+    // Highlight special accounts
+    if (registro.cuenta.es_especial) {
+      row.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFFF4CC' }
+      };
+    }
+    
+    // Format currency
+    row.getCell('monto').numFmt = '"Q"#,##0.00';
+  });
+  
+  return workbook;
+}
