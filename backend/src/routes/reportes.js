@@ -31,6 +31,8 @@ function calcularDiasHabilesTranscurridos(anio, mes, fechaCorte, diasAtencion) {
   let diasHabiles = 0;
   const fecha = new Date(anio, mes - 1, 1);
   const corte = new Date(fechaCorte);
+  // Normalize dates to midnight for accurate comparison
+  corte.setHours(0, 0, 0, 0);
   
   while (fecha <= corte && fecha.getMonth() === mes - 1) {
     if (diasActivos.includes(fecha.getDay())) {

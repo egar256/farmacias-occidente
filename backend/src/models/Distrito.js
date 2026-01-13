@@ -10,7 +10,13 @@ const Distrito = sequelize.define('Distrito', {
   nombre: {
     type: DataTypes.STRING,
     allowNull: false,
-    unique: true
+    unique: true,
+    validate: {
+      len: {
+        args: [1, 100],
+        msg: 'El nombre del distrito debe tener entre 1 y 100 caracteres'
+      }
+    }
   }
 }, {
   tableName: 'distritos',

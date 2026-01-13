@@ -69,6 +69,12 @@ function Sucursales() {
       alert('El nombre es requerido');
       return;
     }
+    
+    // Validate dias_atencion
+    if (!formData.dias_atencion || formData.dias_atencion.trim() === '') {
+      alert('Debe seleccionar al menos un día de atención');
+      return;
+    }
 
     try {
       if (editingId) {
