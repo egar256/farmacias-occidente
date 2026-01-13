@@ -1,5 +1,6 @@
 import express from 'express';
-import { generateDetalleReport, generateResumenDiarioReport, generateResumenGlobalReport } from '../services/excelService.js';
+import { generateDetalleReport, generateResumenDiarioReport, generateResumenGlobalReport, generateResumenSucursalReport } from '../services/excelService.js';
+import { generateResumenSucursalPDF } from '../services/pdfService.js';
 import { RegistroTurno, Sucursal, MetaMensual } from '../models/index.js';
 import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
@@ -161,6 +162,37 @@ router.get('/dashboard-ventas', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error en dashboard-ventas:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Export resumen sucursal to Excel or PDF
+router.get('/resumen-sucursal/export', async (req, res) => {
+  try {
+    const { formato, fecha_inicio, fecha_fin, sucursal_id } = req.query;
+    
+    if (!formato || (formato !== 'excel' && formato !== 'pdf')) {
+      return res.status(400).json({ error: 'Formato no válido. Use "excel" o "pdf"' });
+    }
+    
+    if (formato === 'excel') {
+      const workbook = await generateResumenSucursalReport(fecha_inicio, fecha_fin, sucursal_id);
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=resumen-sucursal.xlsx');
+      
+      await workbook.xlsx.write(res);
+      res.end();
+    } else if (formato === 'pdf') {
+      const pdfBuffer = await generateResumenSucursalPDF(fecha_inicio, fecha_fin, sucursal_id);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename=resumen-sucursal.pdf');
+      
+      res.send(pdfBuffer);
+    }
+  } catch (error) {
+    console.error('Error generating export:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -342,3 +342,165 @@ export async function generateResumenGlobalReport(fecha_inicio, fecha_fin, sucur
   
   return workbook;
 }
+
+// Reporte: Resumen por Sucursal
+export async function generateResumenSucursalReport(fecha_inicio, fecha_fin, sucursal_id) {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Resumen por Sucursal');
+  
+  // Title
+  worksheet.mergeCells('A1:E1');
+  const titleCell = worksheet.getCell('A1');
+  titleCell.value = 'Resumen por Sucursal';
+  titleCell.font = { bold: true, size: 16 };
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  
+  // Date range
+  worksheet.mergeCells('A2:E2');
+  const dateCell = worksheet.getCell('A2');
+  let periodText = 'Período: ';
+  if (fecha_inicio && fecha_fin) {
+    periodText += `${fecha_inicio} - ${fecha_fin}`;
+  } else if (fecha_inicio) {
+    periodText += `Desde ${fecha_inicio}`;
+  } else if (fecha_fin) {
+    periodText += `Hasta ${fecha_fin}`;
+  } else {
+    periodText += 'Todos los registros';
+  }
+  dateCell.value = periodText;
+  dateCell.font = { size: 10 };
+  dateCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  
+  // Headers (starting at row 4)
+  worksheet.getRow(4).values = [
+    'Sucursal',
+    'Total Depositado',
+    'Total Tarjeta',
+    'Total Sistema',
+    'Total Facturado'
+  ];
+  
+  // Style header
+  worksheet.getRow(4).font = { bold: true };
+  worksheet.getRow(4).fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFD3D3D3' }
+  };
+  
+  // Set column widths
+  worksheet.columns = [
+    { key: 'sucursal', width: 25 },
+    { key: 'total_depositado', width: 18 },
+    { key: 'total_tarjeta', width: 15 },
+    { key: 'total_sistema', width: 15 },
+    { key: 'total_facturado', width: 17 }
+  ];
+  
+  // Get data
+  const where = {};
+  if (fecha_inicio && fecha_fin) {
+    where.fecha = { [Op.between]: [fecha_inicio, fecha_fin] };
+  } else if (fecha_inicio) {
+    where.fecha = { [Op.gte]: fecha_inicio };
+  } else if (fecha_fin) {
+    where.fecha = { [Op.lte]: fecha_fin };
+  }
+  
+  if (sucursal_id) {
+    where.sucursal_id = parseInt(sucursal_id);
+  }
+  
+  const registros = await RegistroTurno.findAll({
+    where,
+    include: [
+      { model: Sucursal, as: 'sucursal' }
+    ]
+  });
+  
+  // Group by sucursal
+  const resumen = {};
+  
+  registros.forEach(registro => {
+    const sucursalId = registro.sucursal_id;
+    const sucursalNombre = registro.sucursal?.nombre || 'Sin sucursal';
+    
+    if (!resumen[sucursalId]) {
+      resumen[sucursalId] = {
+        sucursal_id: sucursalId,
+        sucursal_nombre: sucursalNombre,
+        total_depositado: 0,
+        total_tarjeta: 0,
+        total_sistema: 0,
+        total_facturado: 0
+      };
+    }
+    
+    resumen[sucursalId].total_depositado += parseFloat(registro.monto_depositado || 0);
+    resumen[sucursalId].total_tarjeta += parseFloat(registro.venta_tarjeta || 0);
+    resumen[sucursalId].total_sistema += parseFloat(registro.total_sistema || 0);
+    resumen[sucursalId].total_facturado += parseFloat(registro.total_facturado || 0);
+  });
+  
+  const data = Object.values(resumen);
+  
+  // Calculate totals
+  const totales = {
+    total_depositado: 0,
+    total_tarjeta: 0,
+    total_sistema: 0,
+    total_facturado: 0
+  };
+  
+  data.forEach(item => {
+    totales.total_depositado += item.total_depositado;
+    totales.total_tarjeta += item.total_tarjeta;
+    totales.total_sistema += item.total_sistema;
+    totales.total_facturado += item.total_facturado;
+  });
+  
+  // Add data rows (starting at row 5)
+  let currentRow = 5;
+  data.forEach(item => {
+    const row = worksheet.getRow(currentRow);
+    row.values = [
+      item.sucursal_nombre,
+      item.total_depositado,
+      item.total_tarjeta,
+      item.total_sistema,
+      item.total_facturado
+    ];
+    
+    // Format currency columns
+    ['total_depositado', 'total_tarjeta', 'total_sistema', 'total_facturado'].forEach((col, idx) => {
+      row.getCell(idx + 2).numFmt = '"Q"#,##0.00';
+    });
+    
+    currentRow++;
+  });
+  
+  // Add totals row
+  const totalRow = worksheet.getRow(currentRow);
+  totalRow.values = [
+    'TOTAL',
+    totales.total_depositado,
+    totales.total_tarjeta,
+    totales.total_sistema,
+    totales.total_facturado
+  ];
+  
+  totalRow.font = { bold: true };
+  totalRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFFFCC00' }
+  };
+  
+  // Format currency columns in totals
+  ['total_depositado', 'total_tarjeta', 'total_sistema', 'total_facturado'].forEach((col, idx) => {
+    totalRow.getCell(idx + 2).numFmt = '"Q"#,##0.00';
+  });
+  
+  return workbook;
+}
