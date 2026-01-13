@@ -27,8 +27,11 @@ const RegistroTurno = sequelize.define('RegistroTurno', {
       key: 'id'
     }
   },
-  correlativo_ventas: {
-    type: DataTypes.STRING
+  correlativo_inicial: {
+    type: DataTypes.TEXT
+  },
+  correlativo_final: {
+    type: DataTypes.TEXT
   },
   cuenta_id: {
     type: DataTypes.INTEGER,
