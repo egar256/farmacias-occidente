@@ -54,6 +54,14 @@ export const downloadReporteResumenGlobal = (params) => {
   return `${API_BASE_URL}/reportes/resumen-global?${queryString}`;
 };
 
+// Depositos por Cuenta
+export const getDepositosCuenta = (params) => api.get('/reportes/depositos-cuenta', { params });
+
+export const downloadReporteDepositosCuenta = (params) => {
+  const queryString = new URLSearchParams(params).toString();
+  return `${API_BASE_URL}/reportes/depositos-cuenta/excel?${queryString}`;
+};
+
 // Usuarios
 export const getUsuarios = () => api.get('/usuarios');
 export const getUsuario = (id) => api.get(`/usuarios/${id}`);

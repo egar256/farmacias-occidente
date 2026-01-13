@@ -81,8 +81,25 @@ router.post('/', async (req, res) => {
     // Total vendido = Total sistema - Gastos (Canjes NO se resta, es solo informativo)
     data.total_vendido = parseFloat(data.total_sistema || 0) - parseFloat(data.gastos || 0);
     
-    // Total facturado = Total de ventas
-    data.total_facturado = data.total_ventas;
+    // Check if cuenta is special to determine total_facturado and total_no_facturado
+    let esEspecial = false;
+    if (data.cuenta_id) {
+      const cuenta = await Cuenta.findByPk(data.cuenta_id);
+      esEspecial = cuenta?.es_especial || false;
+    }
+    
+    if (esEspecial) {
+      // Special account: deposit goes to total_no_facturado
+      data.total_no_facturado = parseFloat(data.monto_depositado || 0);
+      data.total_facturado = parseFloat(data.venta_tarjeta || 0);
+    } else {
+      // Normal account: all goes to total_facturado
+      data.total_facturado = data.total_ventas;
+      data.total_no_facturado = 0;
+    }
+    
+    // Total meta = total_facturado + total_no_facturado
+    data.total_meta = data.total_facturado + data.total_no_facturado;
     
     const registro = await RegistroTurno.create(data);
     
@@ -118,8 +135,25 @@ router.put('/:id', async (req, res) => {
     // Total vendido = Total sistema - Gastos (Canjes NO se resta, es solo informativo)
     data.total_vendido = parseFloat(data.total_sistema || 0) - parseFloat(data.gastos || 0);
     
-    // Total facturado = Total de ventas
-    data.total_facturado = data.total_ventas;
+    // Check if cuenta is special to determine total_facturado and total_no_facturado
+    let esEspecial = false;
+    if (data.cuenta_id) {
+      const cuenta = await Cuenta.findByPk(data.cuenta_id);
+      esEspecial = cuenta?.es_especial || false;
+    }
+    
+    if (esEspecial) {
+      // Special account: deposit goes to total_no_facturado
+      data.total_no_facturado = parseFloat(data.monto_depositado || 0);
+      data.total_facturado = parseFloat(data.venta_tarjeta || 0);
+    } else {
+      // Normal account: all goes to total_facturado
+      data.total_facturado = data.total_ventas;
+      data.total_no_facturado = 0;
+    }
+    
+    // Total meta = total_facturado + total_no_facturado
+    data.total_meta = data.total_facturado + data.total_no_facturado;
     
     await registro.update(data);
     
@@ -218,12 +252,10 @@ router.get('/resumen/sucursal', async (req, res) => {
       if (registro.cuenta?.es_especial) {
         resumen[sucursalId].total_no_facturado += monto;
       }
-    }
-    
-    // Calculate total_meta = total_vendido + gastos (Canjes NO se resta)
-    for (const sucursalId in resumen) {
-      const totalVendido = resumen[sucursalId].total_sistema - resumen[sucursalId].total_gastos;
-      resumen[sucursalId].total_meta = totalVendido + resumen[sucursalId].total_gastos;
+      
+      // Total meta = total_facturado + total_no_facturado
+      const metaFromRegistro = parseFloat(registro.total_meta || 0);
+      resumen[sucursalId].total_meta += metaFromRegistro;
     }
     
     res.json(Object.values(resumen));

@@ -72,6 +72,14 @@ const RegistroTurno = sequelize.define('RegistroTurno', {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0
   },
+  total_no_facturado: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0
+  },
+  total_meta: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0
+  },
   observaciones: {
     type: DataTypes.TEXT
   }

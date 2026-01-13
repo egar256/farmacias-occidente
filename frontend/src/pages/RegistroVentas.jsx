@@ -30,7 +30,9 @@ function RegistroVentas() {
   const [calculated, setCalculated] = useState({
     total_ventas: 0,
     total_vendido: 0,
-    total_facturado: 0
+    total_facturado: 0,
+    total_no_facturado: 0,
+    total_meta: 0
   });
 
   useEffect(() => {
@@ -39,7 +41,7 @@ function RegistroVentas() {
 
   useEffect(() => {
     calculateTotals();
-  }, [formData.monto_depositado, formData.venta_tarjeta, formData.total_sistema, formData.gastos, formData.canjes]);
+  }, [formData.monto_depositado, formData.venta_tarjeta, formData.total_sistema, formData.gastos, formData.canjes, formData.cuenta_id]);
 
   const loadFormData = async () => {
     try {
@@ -88,12 +90,30 @@ function RegistroVentas() {
 
     const total_ventas = depositado + tarjeta;
     const total_vendido = sistema - gastos; // Canjes NO se resta, es solo informativo
-    const total_facturado = total_ventas;
+    
+    // Check if selected cuenta is special
+    const selectedCuenta = cuentas.find(c => c.id === parseInt(formData.cuenta_id));
+    const esEspecial = selectedCuenta?.es_especial || false;
+    
+    let total_facturado, total_no_facturado;
+    if (esEspecial) {
+      // Special account: deposit goes to total_no_facturado
+      total_no_facturado = depositado;
+      total_facturado = tarjeta;
+    } else {
+      // Normal account: all goes to total_facturado
+      total_facturado = total_ventas;
+      total_no_facturado = 0;
+    }
+    
+    const total_meta = total_facturado + total_no_facturado;
 
     setCalculated({
       total_ventas,
       total_vendido,
-      total_facturado
+      total_facturado,
+      total_no_facturado,
+      total_meta
     });
   };
 
@@ -339,7 +359,7 @@ function RegistroVentas() {
 
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
             <h3 className="text-lg font-semibold text-gray-800 mb-3">Cálculos Automáticos</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <div className="text-sm text-gray-600">Total de Ventas</div>
                 <div className="text-xl font-bold text-blue-600">{formatCurrency(calculated.total_ventas)}</div>
@@ -353,7 +373,12 @@ function RegistroVentas() {
               <div>
                 <div className="text-sm text-gray-600">Total Facturado</div>
                 <div className="text-xl font-bold text-purple-600">{formatCurrency(calculated.total_facturado)}</div>
-                <div className="text-xs text-gray-500">Igual a Total de Ventas</div>
+                <div className="text-xs text-gray-500">Venta facturada</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600">Total Meta</div>
+                <div className="text-xl font-bold text-orange-600">{formatCurrency(calculated.total_meta)}</div>
+                <div className="text-xs text-gray-500">Facturado + No Facturado</div>
               </div>
             </div>
           </div>
