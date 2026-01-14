@@ -1,11 +1,47 @@
 import express from 'express';
 import { generateDetalleReport, generateResumenDiarioReport, generateResumenGlobalReport, generateResumenSucursalReport, generateDepositosCuentaReport } from '../services/excelService.js';
 import { generateResumenSucursalPDF } from '../services/pdfService.js';
-import { RegistroTurno, Sucursal, MetaMensual, Turno, Cuenta } from '../models/index.js';
+import { RegistroTurno, Sucursal, MetaMensual, Turno, Cuenta, Distrito } from '../models/index.js';
 import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
 
 const router = express.Router();
+
+// Function to calculate business days for the month based on dias_atencion
+function calcularDiasHabiles(anio, mes, diasAtencion) {
+  const diasSemana = { 'D': 0, 'L': 1, 'M': 2, 'X': 3, 'J': 4, 'V': 5, 'S': 6 };
+  const diasActivos = diasAtencion.split(',').map(d => diasSemana[d.trim()]);
+  
+  let diasHabiles = 0;
+  const fecha = new Date(anio, mes - 1, 1);
+  while (fecha.getMonth() === mes - 1) {
+    if (diasActivos.includes(fecha.getDay())) {
+      diasHabiles++;
+    }
+    fecha.setDate(fecha.getDate() + 1);
+  }
+  return diasHabiles;
+}
+
+// Function to calculate business days elapsed until fecha_corte
+function calcularDiasHabilesTranscurridos(anio, mes, fechaCorte, diasAtencion) {
+  const diasSemana = { 'D': 0, 'L': 1, 'M': 2, 'X': 3, 'J': 4, 'V': 5, 'S': 6 };
+  const diasActivos = diasAtencion.split(',').map(d => diasSemana[d.trim()]);
+  
+  let diasHabiles = 0;
+  const fecha = new Date(anio, mes - 1, 1);
+  const corte = new Date(fechaCorte);
+  // Normalize dates to midnight for accurate comparison
+  corte.setHours(0, 0, 0, 0);
+  
+  while (fecha <= corte && fecha.getMonth() === mes - 1) {
+    if (diasActivos.includes(fecha.getDay())) {
+      diasHabiles++;
+    }
+    fecha.setDate(fecha.getDate() + 1);
+  }
+  return diasHabiles;
+}
 
 // Reporte 1: Detalle por turno/sucursal
 router.get('/detalle', async (req, res) => {
@@ -74,17 +110,8 @@ router.get('/dashboard-ventas', async (req, res) => {
     const fechaInicio = new Date(añoInt, mesInt - 1, 1);
     const fechaFin = new Date(añoInt, mesInt, 0); // Last day of month
     
-    // Calculate dias_mes
-    const diasMes = fechaFin.getDate();
-    
-    // Calculate dias_transcurridos
-    let diasTranscurridos = diasMes;
-    if (fecha_corte) {
-      const fechaCorteDate = new Date(fecha_corte);
-      if (fechaCorteDate >= fechaInicio && fechaCorteDate <= fechaFin) {
-        diasTranscurridos = fechaCorteDate.getDate();
-      }
-    }
+    // Use fecha_corte or default to today
+    const fechaCorteDate = fecha_corte ? new Date(fecha_corte) : new Date();
     
     // Build where clause
     const where = {
@@ -108,8 +135,15 @@ router.get('/dashboard-ventas', async (req, res) => {
         [sequelize.fn('COUNT', sequelize.fn('DISTINCT', sequelize.col('fecha'))), 'dias_con_ventas']
       ],
       where,
-      include: [{ model: Sucursal, as: 'sucursal', attributes: ['nombre'] }],
-      group: ['sucursal_id', 'sucursal.id'],
+      include: [
+        { 
+          model: Sucursal, 
+          as: 'sucursal', 
+          attributes: ['nombre', 'dias_atencion'],
+          include: [{ model: Distrito, as: 'distrito', attributes: ['id', 'nombre'] }]
+        }
+      ],
+      group: ['sucursal_id', 'sucursal.id', 'sucursal->distrito.id'],
       raw: false
     });
     
@@ -134,21 +168,31 @@ router.get('/dashboard-ventas', async (req, res) => {
       const totalMeta = parseFloat(registro.dataValues.total_meta || 0);
       const meta = metasMap[sucursalId] || 0;
       const diasConVentas = parseInt(registro.dataValues.dias_con_ventas || 0);
+      const diasAtencion = registro.sucursal?.dias_atencion || 'L,M,X,J,V,S';
+      const distritoId = registro.sucursal?.distrito?.id || null;
+      const distritoNombre = registro.sucursal?.distrito?.nombre || null;
+      
+      // Calculate business days for the month and elapsed
+      const diasHabilesMes = calcularDiasHabiles(añoInt, mesInt, diasAtencion);
+      const diasHabilesTranscurridos = calcularDiasHabilesTranscurridos(añoInt, mesInt, fechaCorteDate, diasAtencion);
       
       // Calculate percentages and projections
       const pctActual = meta > 0 ? totalMeta / meta : 0;
-      const proyeccion = diasTranscurridos > 0 ? (totalMeta / diasTranscurridos) * diasMes : 0;
+      // proyeccion = (total_ventas / dias_habiles_transcurridos) * dias_habiles_mes
+      const proyeccion = diasHabilesTranscurridos > 0 ? (totalMeta / diasHabilesTranscurridos) * diasHabilesMes : 0;
       const pctProyectado = meta > 0 ? proyeccion / meta : 0;
       const desvio = proyeccion - meta;
       
       return {
         sucursal_id: sucursalId,
         sucursal_nombre: registro.sucursal?.nombre || '',
+        distrito_id: distritoId,
+        distrito_nombre: distritoNombre,
         total_ventas: totalMeta,
         meta: meta,
         dias_con_ventas: diasConVentas,
-        dias_mes: diasMes,
-        dias_transcurridos: diasTranscurridos,
+        dias_habiles_mes: diasHabilesMes,
+        dias_habiles_transcurridos: diasHabilesTranscurridos,
         pct_actual: pctActual,
         proyeccion: proyeccion,
         pct_proyectado: pctProyectado,

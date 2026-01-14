@@ -5,6 +5,7 @@ import Cuenta from './Cuenta.js';
 import RegistroTurno from './RegistroTurno.js';
 import Usuario from './Usuario.js';
 import MetaMensual from './MetaMensual.js';
+import Distrito from './Distrito.js';
 
 // Define associations
 RegistroTurno.belongsTo(Sucursal, { foreignKey: 'sucursal_id', as: 'sucursal' });
@@ -18,10 +19,24 @@ Cuenta.hasMany(RegistroTurno, { foreignKey: 'cuenta_id' });
 MetaMensual.belongsTo(Sucursal, { foreignKey: 'sucursal_id', as: 'sucursal' });
 Sucursal.hasMany(MetaMensual, { foreignKey: 'sucursal_id' });
 
+// Distrito associations
+Sucursal.belongsTo(Distrito, { foreignKey: 'distrito_id', as: 'distrito' });
+Distrito.hasMany(Sucursal, { foreignKey: 'distrito_id' });
+
 // Initialize database with seed data
 export async function initializeDatabase() {
   try {
     await sequelize.sync();
+    
+    // Seed Distritos
+    const distritosCount = await Distrito.count();
+    if (distritosCount === 0) {
+      await Distrito.bulkCreate([
+        { nombre: 'Cobán' },
+        { nombre: 'Huehuetenango' }
+      ]);
+      console.log('✓ Distritos inicializados');
+    }
     
     // Seed Turnos
     const turnosCount = await Turno.count();
@@ -83,4 +98,4 @@ export async function initializeDatabase() {
   }
 }
 
-export { sequelize, Sucursal, Turno, Cuenta, RegistroTurno, Usuario, MetaMensual };
+export { sequelize, Sucursal, Turno, Cuenta, RegistroTurno, Usuario, MetaMensual, Distrito };
