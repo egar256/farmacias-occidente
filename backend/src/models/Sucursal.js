@@ -15,18 +15,6 @@ const Sucursal = sequelize.define('Sucursal', {
   direccion: {
     type: DataTypes.STRING
   },
-  distrito_id: {
-    type: DataTypes.INTEGER,
-    references: {
-      model: 'distritos',
-      key: 'id'
-    },
-    allowNull: true
-  },
-  dias_atencion: {
-    type: DataTypes.STRING,
-    defaultValue: 'L,M,X,J,V,S' // Por defecto Lunes a Sábado
-  },
   activo: {
     type: DataTypes.BOOLEAN,
     defaultValue: true

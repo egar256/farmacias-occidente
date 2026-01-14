@@ -11,7 +11,6 @@ import registrosRoutes from './routes/registros.js';
 import reportesRoutes from './routes/reportes.js';
 import usuariosRoutes from './routes/usuarios.js';
 import metasRoutes from './routes/metas.js';
-import distritosRoutes from './routes/distritos.js';
 
 dotenv.config();
 
@@ -30,7 +29,6 @@ app.use('/api/registros', registrosRoutes);
 app.use('/api/reportes', reportesRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/metas', metasRoutes);
-app.use('/api/distritos', distritosRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

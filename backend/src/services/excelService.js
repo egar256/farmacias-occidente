@@ -60,12 +60,7 @@ export async function generateDetalleReport(fecha_inicio, fecha_fin) {
   registros.forEach(registro => {
     const totalVentas = parseFloat(registro.total_ventas || 0);
     const totalSistema = parseFloat(registro.total_sistema || 0);
-    const montoDepositado = parseFloat(registro.monto_depositado || 0);
-    const ventaTarjeta = parseFloat(registro.venta_tarjeta || 0);
-    const gastos = parseFloat(registro.gastos || 0);
-    // Faltante = total_sistema - (monto_depositado + venta_tarjeta + gastos)
-    // Canjes NO se resta, es solo informativo
-    const faltante = totalSistema - (montoDepositado + ventaTarjeta + gastos);
+    const faltante = totalVentas - totalSistema;
     
     const row = worksheet.addRow({
       fecha: registro.fecha,
@@ -118,7 +113,6 @@ export async function generateResumenDiarioReport(fecha_inicio, fecha_fin) {
     { header: 'Total Tarjeta', key: 'total_tarjeta', width: 15 },
     { header: 'Total Ventas', key: 'total_ventas', width: 15 },
     { header: 'Total Sistema', key: 'total_sistema', width: 15 },
-    { header: 'Total Gastos', key: 'total_gastos', width: 15 },
     { header: 'Total Facturado', key: 'total_facturado', width: 17 },
     { header: 'Faltante', key: 'faltante', width: 12 },
     { header: 'Tiene Faltante', key: 'tiene_faltante', width: 15 }
@@ -160,7 +154,6 @@ export async function generateResumenDiarioReport(fecha_inicio, fecha_fin) {
         total_tarjeta: 0,
         total_ventas: 0,
         total_sistema: 0,
-        total_gastos: 0,
         total_facturado: 0
       };
     }
@@ -169,15 +162,12 @@ export async function generateResumenDiarioReport(fecha_inicio, fecha_fin) {
     resumen[key].total_tarjeta += parseFloat(registro.venta_tarjeta || 0);
     resumen[key].total_ventas += parseFloat(registro.total_ventas || 0);
     resumen[key].total_sistema += parseFloat(registro.total_sistema || 0);
-    resumen[key].total_gastos += parseFloat(registro.gastos || 0);
     resumen[key].total_facturado += parseFloat(registro.total_facturado || 0);
   });
   
   // Add data rows
   Object.values(resumen).forEach(item => {
-    // Faltante = total_sistema - (total_depositado + total_tarjeta + total_gastos)
-    // Canjes NO se resta, es solo informativo
-    const faltante = item.total_sistema - (item.total_depositado + item.total_tarjeta + item.total_gastos);
+    const faltante = item.total_ventas - item.total_sistema;
     const tieneFaltante = faltante < 0 ? 'SÍ' : 'NO';
     
     const row = worksheet.addRow({
@@ -187,7 +177,6 @@ export async function generateResumenDiarioReport(fecha_inicio, fecha_fin) {
       total_tarjeta: item.total_tarjeta,
       total_ventas: item.total_ventas,
       total_sistema: item.total_sistema,
-      total_gastos: item.total_gastos,
       total_facturado: item.total_facturado,
       faltante: faltante,
       tiene_faltante: tieneFaltante
@@ -204,7 +193,7 @@ export async function generateResumenDiarioReport(fecha_inicio, fecha_fin) {
     }
     
     // Format currency columns
-    ['total_depositado', 'total_tarjeta', 'total_ventas', 'total_sistema', 'total_gastos', 'total_facturado', 'faltante'].forEach(col => {
+    ['total_depositado', 'total_tarjeta', 'total_ventas', 'total_sistema', 'total_facturado', 'faltante'].forEach(col => {
       row.getCell(col).numFmt = '"Q"#,##0.00';
     });
   });

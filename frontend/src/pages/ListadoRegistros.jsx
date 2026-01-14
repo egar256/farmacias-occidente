@@ -215,13 +215,7 @@ function ListadoRegistros() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {registros.map((registro) => {
-                  // Faltante = total_sistema - (monto_depositado + venta_tarjeta + gastos)
-                  // Canjes NO se resta, es solo informativo
-                  const totalSistema = parseFloat(registro.total_sistema || 0);
-                  const montoDepositado = parseFloat(registro.monto_depositado || 0);
-                  const ventaTarjeta = parseFloat(registro.venta_tarjeta || 0);
-                  const gastos = parseFloat(registro.gastos || 0);
-                  const faltante = totalSistema - (montoDepositado + ventaTarjeta + gastos);
+                  const faltante = parseFloat(registro.total_ventas || 0) - parseFloat(registro.total_sistema || 0);
                   const tieneFaltante = faltante < 0;
                   
                   // Format correlativo display

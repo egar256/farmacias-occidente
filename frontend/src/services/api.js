@@ -30,13 +30,6 @@ export const createCuenta = (data) => api.post('/cuentas', data);
 export const updateCuenta = (id, data) => api.put(`/cuentas/${id}`, data);
 export const deleteCuenta = (id) => api.delete(`/cuentas/${id}`);
 
-// Distritos
-export const getDistritos = () => api.get('/distritos');
-export const getDistrito = (id) => api.get(`/distritos/${id}`);
-export const createDistrito = (data) => api.post('/distritos', data);
-export const updateDistrito = (id, data) => api.put(`/distritos/${id}`, data);
-export const deleteDistrito = (id) => api.delete(`/distritos/${id}`);
-
 // Registros
 export const getRegistros = (params) => api.get('/registros', { params });
 export const getRegistro = (id) => api.get(`/registros/${id}`);

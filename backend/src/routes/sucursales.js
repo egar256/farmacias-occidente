@@ -1,5 +1,5 @@
 import express from 'express';
-import { Sucursal, Distrito } from '../models/index.js';
+import { Sucursal } from '../models/index.js';
 
 const router = express.Router();
 
@@ -7,7 +7,6 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const sucursales = await Sucursal.findAll({
-      include: [{ model: Distrito, as: 'distrito', attributes: ['id', 'nombre'] }],
       order: [['nombre', 'ASC']]
     });
     res.json(sucursales);
@@ -19,9 +18,7 @@ router.get('/', async (req, res) => {
 // Get one sucursal
 router.get('/:id', async (req, res) => {
   try {
-    const sucursal = await Sucursal.findByPk(req.params.id, {
-      include: [{ model: Distrito, as: 'distrito', attributes: ['id', 'nombre'] }]
-    });
+    const sucursal = await Sucursal.findByPk(req.params.id);
     if (!sucursal) {
       return res.status(404).json({ error: 'Sucursal no encontrada' });
     }

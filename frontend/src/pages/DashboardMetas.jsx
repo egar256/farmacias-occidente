@@ -286,13 +286,12 @@ function DashboardMetas() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sucursal</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Distrito</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ventas</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Meta</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">% Actual</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Proyección</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">% Proy</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Días Háb</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Días</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Desvío</th>
                   </tr>
                 </thead>
@@ -301,9 +300,6 @@ function DashboardMetas() {
                     <tr key={item.sucursal_id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {item.sucursal_nombre}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {item.distrito_nombre || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
                         {formatCurrency(item.total_ventas)}
@@ -323,7 +319,7 @@ function DashboardMetas() {
                         {formatPercentage(item.pct_proyectado)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                        {item.dias_con_ventas}/{item.dias_habiles_mes}
+                        {item.dias_con_ventas}/{item.dias_mes}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold"
                           style={{ color: item.desvio >= 0 ? '#10B981' : '#D83636' }}>
@@ -335,114 +331,6 @@ function DashboardMetas() {
               </table>
             </div>
           </div>
-
-          {/* Resumen por Distrito */}
-          {dashboardData.length > 0 && (() => {
-            // Group data by distrito
-            const distritoGroups = {};
-            dashboardData.forEach(item => {
-              const distritoKey = item.distrito_nombre || 'Sin Distrito';
-              if (!distritoGroups[distritoKey]) {
-                distritoGroups[distritoKey] = {
-                  distrito_nombre: distritoKey,
-                  total_ventas: 0,
-                  total_meta: 0,
-                  total_proyeccion: 0
-                };
-              }
-              distritoGroups[distritoKey].total_ventas += item.total_ventas;
-              distritoGroups[distritoKey].total_meta += item.meta;
-              distritoGroups[distritoKey].total_proyeccion += item.proyeccion;
-            });
-
-            const distritoData = Object.values(distritoGroups).map(grupo => ({
-              ...grupo,
-              pct_actual: grupo.total_meta > 0 ? grupo.total_ventas / grupo.total_meta : 0,
-              pct_proyectado: grupo.total_meta > 0 ? grupo.total_proyeccion / grupo.total_meta : 0,
-              desvio: grupo.total_proyeccion - grupo.total_meta
-            }));
-
-            return (
-              <div className="bg-white rounded-lg shadow mb-6 overflow-hidden">
-                <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-800">Resumen por Distrito</h3>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Distrito</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ventas</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Meta</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">% Actual</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Proyección</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">% Proy</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Desvío</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {distritoData.map((distrito, idx) => (
-                        <tr key={idx}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {distrito.distrito_nombre}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                            {formatCurrency(distrito.total_ventas)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                            {formatCurrency(distrito.total_meta)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold"
-                              style={{ color: getColorByPercentage(distrito.pct_actual) }}>
-                            {formatPercentage(distrito.pct_actual)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                            {formatCurrency(distrito.total_proyeccion)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold"
-                              style={{ color: getColorByPercentage(distrito.pct_proyectado) }}>
-                            {formatPercentage(distrito.pct_proyectado)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold"
-                              style={{ color: distrito.desvio >= 0 ? '#10B981' : '#D83636' }}>
-                            {formatCurrency(distrito.desvio)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot className="bg-gray-100">
-                      <tr>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                          TOTAL GENERAL
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900">
-                          {formatCurrency(totales.total_ventas)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900">
-                          {formatCurrency(totales.total_meta)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold"
-                            style={{ color: getColorByPercentage(pct_alcanzado_total) }}>
-                          {formatPercentage(pct_alcanzado_total)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900">
-                          {formatCurrency(totales.total_proyeccion)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold"
-                            style={{ color: getColorByPercentage(totales.total_meta > 0 ? totales.total_proyeccion / totales.total_meta : 0) }}>
-                          {formatPercentage(totales.total_meta > 0 ? totales.total_proyeccion / totales.total_meta : 0)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold"
-                            style={{ color: (totales.total_proyeccion - totales.total_meta) >= 0 ? '#10B981' : '#D83636' }}>
-                          {formatCurrency(totales.total_proyeccion - totales.total_meta)}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              </div>
-            );
-          })()}
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
